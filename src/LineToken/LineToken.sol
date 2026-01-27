@@ -4,19 +4,23 @@ pragma solidity ^0.8.24;
 
 import {ILineToken} from "./LineTokenInterface.sol";
 
-//errors
-error CallerNotMinter(address caller);
-error NotEnoughBalance(address account, uint256 amount);
-error CallerNotSpender(address caller);
-error InsufficientApproval(
-    address spender,
-    uint256 approvedAmount,
-    uint256 triedAmount
-);
-error InsufficeintBalance(address owner, uint256 balance, uint256 triedAmount);
-error CallerNotOwner(address caller);
-
 contract LineToken is ILineToken {
+    //errors
+    error CallerNotMinter(address caller);
+    error NotEnoughBalance(address account, uint256 amount);
+    error CallerNotSpender(address caller);
+    error InsufficientApproval(
+        address spender,
+        uint256 approvedAmount,
+        uint256 triedAmount
+    );
+    error InsufficeintBalance(
+        address owner,
+        uint256 balance,
+        uint256 triedAmount
+    );
+    error CallerNotOwner(address caller);
+
     //state variables
     address immutable iOwner;
     mapping(address => bool) private s_isMinter;
