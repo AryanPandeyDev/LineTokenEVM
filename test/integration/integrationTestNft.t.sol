@@ -10,9 +10,9 @@ contract IntegrationTestNft is Test {
     Nft public nft;
     address public owner;
 
-    address public user1 = makeAddr("user1");
-    address public user2 = makeAddr("user2");
-    address public user3 = makeAddr("user3");
+    address public user1 = makeAddr("user1_line_solidity_for_testing");
+    address public user2 = makeAddr("user2_line_solidity_for_testing");
+    address public user3 = makeAddr("user3_line_solidity_for_testing");
 
     string constant TOKEN_URI_1 = "ipfs://QmIntegration1";
     string constant TOKEN_URI_2 = "ipfs://QmIntegration2";

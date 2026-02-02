@@ -1,66 +1,164 @@
-## Foundry
+# LINE Token Marketplace
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+A decentralized NFT auction marketplace built with Solidity and Foundry. Features automated auction settlement via Chainlink Automation, anti-snipe protection, and pull-based refund mechanism.
 
-Foundry consists of:
+## Features
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+- **NFT Auctions** - Create timed auctions for ERC721 NFTs
+- **LINE Token Bidding** - Bid using the native LINE ERC20 token
+- **Anti-Snipe Protection** - Bids in final 5 minutes extend auction
+- **Automated Settlement** - Chainlink Automation handles auction finalization
+- **Pull-Based Refunds** - Outbid users can claim refunds securely
 
-## Documentation
+## Architecture
 
-https://book.getfoundry.sh/
+```
+src/
+├── marketplace/Marketplace.sol  # Core auction contract
+├── LineToken/LineToken.sol      # ERC20 token for bidding
+└── nft/Nft.sol                  # ERC721 NFT contract
 
-## Usage
+script/
+├── DeployMarketplace.s.sol      # Marketplace deployment
+├── MarketplaceInteractions.s.sol # Interaction scripts
+└── Interactions.s.sol           # Token interactions
+
+test/
+├── unit/                        # Unit tests
+└── integration/                 # Integration tests
+```
+
+## Quick Start
+
+### Prerequisites
+- [Foundry](https://book.getfoundry.sh/getting-started/installation)
+- Node.js (optional, for additional tooling)
+
+### Install
+```bash
+git clone <repo-url>
+cd line-solidity
+forge install
+```
 
 ### Build
-
-```shell
-$ forge build
+```bash
+make build
 ```
 
 ### Test
+```bash
+# All tests
+make test
 
-```shell
-$ forge test
+# Unit tests only
+make test-unit
+
+# Integration tests only
+make test-integration
 ```
 
-### Format
+## Deployment
 
-```shell
-$ forge fmt
+### Environment Setup
+Create a `.env` file:
+```bash
+# For Sepolia
+SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY
+PRIVATE_KEY=your_private_key
+ETHERSCAN_API_KEY=your_etherscan_key
+
+# For local Anvil (optional)
+RPC_URL=http://127.0.0.1:8545
 ```
 
-### Gas Snapshots
+### Deploy Commands
 
-```shell
-$ forge snapshot
+```bash
+# Local Anvil
+make deploy-marketplace-anvil
+
+# Sepolia Testnet (with verification)
+make deploy-marketplace-sepolia
+
+# Deploy all contracts
+make deploy-all-sepolia
 ```
 
-### Anvil
+## Interactions
 
-```shell
-$ anvil
+### Auction Operations
+```bash
+# Create auction
+make marketplace-create-auction-sepolia
+
+# Place bid
+make marketplace-bid-sepolia
+
+# Claim refund (if outbid)
+make marketplace-claim-refund-sepolia
+
+# Cancel auction (admin only)
+make marketplace-cancel-auction-sepolia
+
+# Perform upkeep (settle ended auctions)
+make marketplace-upkeep-sepolia
 ```
 
-### Deploy
+### View/Check Operations
+```bash
+# Check auction status
+make marketplace-check-auction-sepolia
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+# Check pending refunds
+make marketplace-check-refund-sepolia
+
+# Get marketplace info
+make marketplace-info-sepolia
 ```
 
-### Cast
+### Token Operations
+```bash
+# Mint LINE tokens
+make line-mint-sepolia
 
-```shell
-$ cast <subcommand>
+# Approve tokens for bidding
+make marketplace-approve-tokens-sepolia
+
+# Approve NFT for auction
+make marketplace-approve-nft-sepolia
 ```
 
-### Help
+Run `make help` for all available commands.
 
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+## Testing
+
+| Test Type | Command | Description |
+|-----------|---------|-------------|
+| All | `make test` | Run all tests |
+| Unit | `make test-unit` | Unit tests only |
+| Integration | `make test-integration` | End-to-end flows |
+| Fork | `make test-fork` | Against Sepolia fork |
+
+## Chainlink Automation
+
+The marketplace uses Chainlink Automation for trustless auction settlement:
+
+```bash
+# Register upkeep after deployment
+make register-upkeep-sepolia
 ```
+
+Requires LINK tokens in your account for upkeep registration.
+
+## Contract Addresses (Sepolia)
+
+| Contract | Address |
+|----------|---------|
+| LINE Token | `0xb09CA4C105fBAd8970dbebf36760203a3801387D` |
+| NFT | `0xDcDC4A8431391524B993a229482E0C27b68fCE8C` |
+| LINK Token | `0x779877A7B0D9E8603169DdbD7836e478b4624789` |
+
+## License
+
+MIT

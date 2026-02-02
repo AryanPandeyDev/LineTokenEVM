@@ -1,9 +1,12 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Script} from "forge-std/Script.sol";
+import {Script, console} from "forge-std/Script.sol";
 import {DevOpsTools} from "lib/foundry-devops/src/DevOpsTools.sol";
 import {ILineToken} from "src/LineToken/LineTokenInterface.sol";
+import {AutomationRegistrarInterface} from "./interface/AutomationRegistrarInterface.s.sol";
+import {LinkTokenInterface} from "@chainlink/contracts/src/v0.8/shared/interfaces/LinkTokenInterface.sol";
+import {HelperConfig} from "./helperConfig.s.sol";
 
 contract MintLineToken is Script {
     uint256 public constant SEND_VALUE = 0.1 * 1e18; // Added constant
@@ -99,5 +102,58 @@ contract ApproveLineToken is Script {
             block.chainid
         );
         approveSpender(mostRecentlyDeployed, SPENDER, SEND_VALUE);
+    }
+}
+
+contract RegisterUpkeep is Script {
+    uint96 linkAmount = 10 ether;
+
+    function run() external {
+        address mostRecentlyDeployed = DevOpsTools.get_most_recent_deployment(
+            "Marketplace",
+            block.chainid
+        );
+        HelperConfig helperConfig = new HelperConfig();
+        HelperConfig.MarketplaceConfig memory config = helperConfig.getConfig();
+        registerUpkeep(
+            mostRecentlyDeployed,
+            config.registrarAddress,
+            config.linkTokenAddress,
+            config.account
+        );
+    }
+
+    function registerUpkeep(
+        address marketplaceAddress,
+        address registrarAddress,
+        address linkTokenAddress,
+        address account
+    ) public {
+        AutomationRegistrarInterface.RegistrationParams
+            memory params = AutomationRegistrarInterface.RegistrationParams({
+                name: "MarketplaceAutomation",
+                encryptedEmail: hex"",
+                upkeepContract: marketplaceAddress,
+                gasLimit: 500000,
+                adminAddress: account,
+                triggerType: 0,
+                checkData: hex"",
+                triggerConfig: hex"",
+                offchainConfig: hex"",
+                amount: linkAmount
+            });
+        vm.startBroadcast(account);
+        LinkTokenInterface(linkTokenAddress).approve(
+            registrarAddress,
+            linkAmount
+        );
+        uint256 upkeepID = AutomationRegistrarInterface(registrarAddress)
+            .registerUpkeep(params);
+        vm.stopBroadcast();
+        console.log("---------------------------------------------");
+        console.log("Upkeep registered successfully!");
+        console.log("Upkeep ID:", upkeepID);
+        console.log("Marketplace Address:", marketplaceAddress);
+        console.log("---------------------------------------------");
     }
 }

@@ -60,6 +60,11 @@ contract Marketplace is AutomationCompatibleInterface {
     error Marketplace_BidAmountMustExceedPreviousBid();
     /// @notice Thrown when a user attempts to claim a refund but has no pending refund amount.
     error Marketplace_NoRefundBalanceToClaim();
+    error Marketplace_InvalidParametersForConstructors(
+        address nftContractAddress,
+        address lineTokenAddress
+    );
+    error Marketplace_AuctionAlreadyExistsForTokenId(uint256 tokenId);
 
     ///////////////////
     // Type Declarations
@@ -87,6 +92,7 @@ contract Marketplace is AutomationCompatibleInterface {
         uint256 highestBid;
         AuctionState auctionState;
         uint256 minimumIncrement;
+        uint256 extentionWindow;
     }
 
     ///////////////////
@@ -181,7 +187,14 @@ contract Marketplace is AutomationCompatibleInterface {
      * @param lineTokenAddress The address of the LINE token contract
      */
     constructor(address nftContractAddress, address lineTokenAddress) {
-        if (nftContractAddress == address(0)) {}
+        if (
+            nftContractAddress == address(0) || lineTokenAddress == address(0)
+        ) {
+            revert Marketplace_InvalidParametersForConstructors(
+                nftContractAddress,
+                lineTokenAddress
+            );
+        }
         i_nftContractAddress = nftContractAddress;
         i_lineTokenAddress = lineTokenAddress;
         i_admin = msg.sender;
@@ -204,14 +217,18 @@ contract Marketplace is AutomationCompatibleInterface {
         uint256 tokenId,
         uint256 startingBid,
         uint256 auctionDurationInSeconds,
-        uint256 minimumIncrementForBid
+        uint256 minimumIncrementForBid,
+        uint256 _extentionWindow
     ) external onlyAdmin {
         (address _owner, bool validToken) = getTokenInfo(tokenId);
-        if (msg.sender != _owner) {
-            revert Marketplace_CallerNotOwnerOfTokenId(tokenId);
+        if (s_tokenIdToAuction[tokenId].auctionState == AuctionState.ACTIVE) {
+            revert Marketplace_AuctionAlreadyExistsForTokenId(tokenId);
         }
         if (!validToken) {
             revert Marketplace_NonExistentTokenId();
+        }
+        if (msg.sender != _owner) {
+            revert Marketplace_CallerNotOwnerOfTokenId(tokenId);
         }
         if (INft(i_nftContractAddress).getApproved(tokenId) != address(this)) {
             revert Marketplace_MarketplaceNotApprovedForTokenId(tokenId);
@@ -224,7 +241,8 @@ contract Marketplace is AutomationCompatibleInterface {
             endTime: block.timestamp + auctionDurationInSeconds,
             highestBid: startingBid,
             auctionState: AuctionState.ACTIVE,
-            minimumIncrement: minimumIncrementForBid
+            minimumIncrement: minimumIncrementForBid,
+            extentionWindow: _extentionWindow
         });
         emit AuctionCreated(tokenId);
         INft(i_nftContractAddress).transferFrom(
@@ -263,9 +281,17 @@ contract Marketplace is AutomationCompatibleInterface {
         ) {
             revert Marketplace_InsufficientApprovalForBid();
         }
+        //anti-snipe-mechanism
+        if (
+            block.timestamp <= auction.endTime &&
+            block.timestamp >= auction.endTime - auction.extentionWindow
+        ) {
+            auction.endTime = block.timestamp + auction.extentionWindow;
+        }
         if (auction.highestBidder != address(0)) {
             s_bidderToRefundAmount[auction.highestBidder] += auction.highestBid;
         }
+        
         auction.highestBidder = msg.sender;
         auction.highestBid = amount;
         emit BidPlaced(tokenId, msg.sender, amount);
@@ -361,7 +387,10 @@ contract Marketplace is AutomationCompatibleInterface {
             Auction storage auction = s_tokenIdToAuction[
                 auctionsToEnd[tokenIndex]
             ];
-            if (block.timestamp >= auction.endTime) {
+            if (
+                auction.auctionState == AuctionState.ACTIVE &&
+                block.timestamp >= auction.endTime
+            ) {
                 auction.auctionState = AuctionState.ENDED;
                 removeToken(s_activeAuctionTokens, auctionsToEnd[tokenIndex]);
                 if (auction.highestBidder != address(0)) {
